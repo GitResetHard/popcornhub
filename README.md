@@ -56,8 +56,10 @@ npm run db:seed
 ```
 
 On Vercel, add the **Neon** integration from the Marketplace; it provisions the database and
-sets `DATABASE_URL` (use the pooled connection string). Apply the schema with `npm run db:migrate`
-against that `DATABASE_URL`.
+sets `DATABASE_URL` (pooled) plus `DATABASE_URL_UNPOOLED`. Set `AUTH_SECRET` in the project's
+environment variables. The `vercel-build` script (`drizzle-kit migrate && next build`) applies
+pending migrations against Neon's direct connection at build time, so no manual migration step
+is needed — it is idempotent and safe to run on every deploy.
 
 `npm run db:seed` loads the level thresholds and achievements and creates an admin account
 (`ADMIN_EMAIL` / `ADMIN_PASSWORD` environment variables override its credentials).
