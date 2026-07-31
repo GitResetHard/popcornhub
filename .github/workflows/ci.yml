@@ -40,7 +40,8 @@ jobs:
       - run: npm ci
 
       - name: Load schema
-        run: mysql -h 127.0.0.1 -u root moviestrackr_next_test < drizzle/0000_initial.sql
+        # Drizzle's `--> statement-breakpoint` markers are rejected by MySQL 8, so strip them.
+        run: sed 's/--> statement-breakpoint//' drizzle/0000_initial.sql | mysql -h 127.0.0.1 -u root moviestrackr_next_test
 
       - run: npm run types
 
