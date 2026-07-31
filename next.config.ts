@@ -11,7 +11,7 @@ const nextConfig: NextConfig = {
             { protocol: 'https', hostname: '*.backblazeb2.com' },
         ],
     },
-    serverExternalPackages: ['mysql2', 'ioredis', 'bcryptjs'],
+    serverExternalPackages: ['pg', 'ioredis', 'bcryptjs'],
     typedRoutes: true,
 };
 
