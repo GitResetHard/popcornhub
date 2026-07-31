@@ -9,6 +9,8 @@ next-env.d.ts
 .env.test
 .env*.local
 
+.vercel
+
 *.tsbuildinfo
 npm-debug.log*
 yarn-error.log*
