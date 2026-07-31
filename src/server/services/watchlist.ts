@@ -162,19 +162,22 @@ export async function addToWatchlist(
 
     const metadata = await fetchMetadataSafely(tmdbId, mediaType, false);
 
-    const [inserted] = await db.insert(watchlistItems).values({
-        userId,
-        tmdbId,
-        mediaType,
-        status,
-        title: metadata?.title ?? null,
-        posterPath: metadata?.poster_path ?? null,
-        releaseDate: metadata?.release_date ?? null,
-        voteAverage: metadata?.vote_average ?? null,
-        totalSeasons: metadata?.total_seasons ?? null,
-        createdAt: now,
-        updatedAt: now,
-    });
+    const [inserted] = await db
+        .insert(watchlistItems)
+        .values({
+            userId,
+            tmdbId,
+            mediaType,
+            status,
+            title: metadata?.title ?? null,
+            posterPath: metadata?.poster_path ?? null,
+            releaseDate: metadata?.release_date ?? null,
+            voteAverage: metadata?.vote_average ?? null,
+            totalSeasons: metadata?.total_seasons ?? null,
+            createdAt: now,
+            updatedAt: now,
+        })
+        .returning();
 
     await db.insert(userActivities).values({
         userId,
@@ -197,13 +200,11 @@ export async function addToWatchlist(
 
     await clearStatsCache(userId);
 
-    const [item] = await db.select().from(watchlistItems).where(eq(watchlistItems.id, inserted.insertId)).limit(1);
-
-    if (!item) {
+    if (!inserted) {
         throw new Error('Failed to load the watchlist item that was just created');
     }
 
-    return item;
+    return inserted;
 }
 
 export async function updateStatus(item: WatchlistItem, status: WatchlistStatus): Promise<WatchlistItem> {

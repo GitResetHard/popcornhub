@@ -32,13 +32,11 @@ const MUTABLE_TABLES = [
 ] as const;
 
 export async function resetDatabase(): Promise<void> {
-    await db.execute(sql`SET FOREIGN_KEY_CHECKS = 0`);
+    // RESTART IDENTITY resets the serial sequences; CASCADE clears dependent rows in one go so
+    // the tables can be truncated together without ordering around foreign keys.
+    const tableList = MUTABLE_TABLES.map((table) => `"${table}"`).join(', ');
 
-    for (const table of MUTABLE_TABLES) {
-        await db.execute(sql.raw(`TRUNCATE TABLE \`${table}\``));
-    }
-
-    await db.execute(sql`SET FOREIGN_KEY_CHECKS = 1`);
+    await db.execute(sql.raw(`TRUNCATE TABLE ${tableList} RESTART IDENTITY CASCADE`));
 }
 
 /** Seeds the level thresholds and achievements gamification looks up by name. */
@@ -87,22 +85,29 @@ export async function createTestUser(overrides: TestUserOverrides = {}): Promise
     const now = new Date();
     const suffix = `${Date.now()}${userCounter}`;
 
-    const [result] = await db.insert(users).values({
-        name: overrides.name ?? 'Test User',
-        username: overrides.username ?? `tester_${suffix}`,
-        email: overrides.email ?? `tester_${suffix}@example.test`,
-        passwordHash: hashPassword(overrides.password ?? 'password'),
-        emailVerifiedAt: overrides.emailVerified === false ? null : now,
-        isAdmin: overrides.isAdmin ?? false,
-        bannedAt: overrides.bannedAt ?? null,
-        twoFactorSecret: overrides.twoFactorSecret ?? null,
-        twoFactorRecoveryCodes: overrides.twoFactorRecoveryCodes ?? null,
-        twoFactorConfirmedAt: overrides.twoFactorConfirmedAt ?? null,
-        createdAt: now,
-        updatedAt: now,
-    });
+    const [result] = await db
+        .insert(users)
+        .values({
+            name: overrides.name ?? 'Test User',
+            username: overrides.username ?? `tester_${suffix}`,
+            email: overrides.email ?? `tester_${suffix}@example.test`,
+            passwordHash: hashPassword(overrides.password ?? 'password'),
+            emailVerifiedAt: overrides.emailVerified === false ? null : now,
+            isAdmin: overrides.isAdmin ?? false,
+            bannedAt: overrides.bannedAt ?? null,
+            twoFactorSecret: overrides.twoFactorSecret ?? null,
+            twoFactorRecoveryCodes: overrides.twoFactorRecoveryCodes ?? null,
+            twoFactorConfirmedAt: overrides.twoFactorConfirmedAt ?? null,
+            createdAt: now,
+            updatedAt: now,
+        })
+        .returning({ id: users.id });
 
-    return result.insertId;
+    if (!result) {
+        throw new Error('Failed to create the test user');
+    }
+
+    return result.id;
 }
 
 export async function closeDatabase(): Promise<void> {

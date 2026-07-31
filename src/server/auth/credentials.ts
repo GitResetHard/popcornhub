@@ -104,16 +104,23 @@ export async function registerUser(input: RegistrationInput): Promise<Registrati
     }
 
     const now = new Date();
-    const [result] = await db.insert(users).values({
-        name: input.name.trim(),
-        username,
-        email,
-        passwordHash: hashPassword(input.password),
-        createdAt: now,
-        updatedAt: now,
-    });
+    const [result] = await db
+        .insert(users)
+        .values({
+            name: input.name.trim(),
+            username,
+            email,
+            passwordHash: hashPassword(input.password),
+            createdAt: now,
+            updatedAt: now,
+        })
+        .returning({ id: users.id });
 
-    return { ok: true, userId: result.insertId };
+    if (!result) {
+        throw new Error('Failed to create the user account');
+    }
+
+    return { ok: true, userId: result.id };
 }
 
 export async function findOrCreateGoogleUser(profile: {
@@ -145,19 +152,26 @@ export async function findOrCreateGoogleUser(profile: {
     }
 
     const now = new Date();
-    const [result] = await db.insert(users).values({
-        name: profile.name,
-        username: await generateUniqueUsername(profile.name),
-        email,
-        googleId: profile.id,
-        avatar: profile.avatar,
-        passwordHash: hashPassword(crypto.randomUUID() + crypto.randomUUID()),
-        emailVerifiedAt: now,
-        createdAt: now,
-        updatedAt: now,
-    });
+    const [result] = await db
+        .insert(users)
+        .values({
+            name: profile.name,
+            username: await generateUniqueUsername(profile.name),
+            email,
+            googleId: profile.id,
+            avatar: profile.avatar,
+            passwordHash: hashPassword(crypto.randomUUID() + crypto.randomUUID()),
+            emailVerifiedAt: now,
+            createdAt: now,
+            updatedAt: now,
+        })
+        .returning({ id: users.id });
 
-    return result.insertId;
+    if (!result) {
+        throw new Error('Failed to create the Google user account');
+    }
+
+    return result.id;
 }
 
 export async function generateUniqueUsername(name: string | null): Promise<string> {

@@ -31,7 +31,10 @@ const ACHIEVEMENTS = [
 
 async function seed() {
     for (const row of LEVELS) {
-        await db.insert(levels).values(row).onDuplicateKeyUpdate({ set: { nextLevelExperience: row.nextLevelExperience } });
+        await db
+            .insert(levels)
+            .values(row)
+            .onConflictDoUpdate({ target: levels.level, set: { nextLevelExperience: row.nextLevelExperience } });
     }
 
     for (const row of ACHIEVEMENTS) {

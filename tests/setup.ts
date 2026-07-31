@@ -7,7 +7,7 @@ import { randomBytes } from 'node:crypto';
 process.env.APP_NAME ??= 'Moviestrackr';
 process.env.APP_URL ??= 'http://localhost:3000';
 process.env.AUTH_SECRET ??= randomBytes(48).toString('base64');
-process.env.DATABASE_URL ??= 'mysql://moviestrackr:secret@127.0.0.1:3306/moviestrackr_next_test';
+process.env.DATABASE_URL ??= 'postgres://moviestrackr:secret@127.0.0.1:5432/moviestrackr_next_test';
 delete process.env.REDIS_URL;
 
 /**
