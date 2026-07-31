@@ -1,0 +1,89 @@
+---
+description: Conventions for the popcornhub Next.js app — architecture, auth, data, and the checks that must pass before committing
+alwaysApply: true
+---
+
+# Popcornhub conventions
+
+This is a **standalone** Next.js 16 (App Router) + React 19 + MySQL movie/TV tracker. It was
+built from an analysis of a reference project to mirror its domain and feature set, but it is
+its own codebase.
+
+## Independence
+
+- This project depends on **no other application**. Never add Laravel, PHP, or a reference to
+  any prior implementation — no shared database, no reading another app's sessions/cookies,
+  no decrypting another app's secrets, no package-table ports. Everything it needs is here.
+- Auth, hashing, and naming are this app's own: `AUTH_SECRET`, database-backed `sessions`
+  table, **scrypt** password hashing, native TOTP 2FA with recovery codes, Google OAuth.
+
+## Architecture
+
+- **App Router** with React Server Components under `src/app`. Pages fetch data on the server;
+  **mutations go through Server Actions** in `src/server/actions/*`. Route handlers live in
+  `src/app/api/**` only for webhooks, autocomplete-style JSON, and OAuth callbacks.
+- `src/server/auth` — sessions, credentials, two-factor, OAuth, and the `getAuthState`
+  React-cache helper that pages use to resolve the current user once per request.
+- `src/server/services` — domain logic (watchlist, favorites, episodes, profile stats,
+  gamification). Keep side effects consistent with the existing services: activity rows, XP,
+  achievements, streaks, and cache invalidation all follow the patterns already in
+  `src/server/services/watchlist.ts` and `gamification.ts`.
+- `src/lib` — framework-agnostic helpers: `enums.ts` (domain enums + XP values), `cache.ts`
+  (Redis with in-process fallback, `TTL` helpers), `tmdb/` (client + service layer),
+  `security.ts`, `seo.ts`, `browse.ts`, `images.ts`, `utils.ts`.
+- **Drizzle ORM** (`src/db/schema/index.ts`) against MySQL. Migrations are generated with
+  `npm run db:generate` into `drizzle/` and applied manually; this app owns its schema.
+- **TMDB** is the only external data source. All calls go through `src/lib/tmdb/*`, which is
+  cached to stay inside rate limits — never call `fetch` to TMDB directly from a page or
+  service. TMDB failures must degrade gracefully (empty state / notice), never 500 the page.
+
+## Values that must stay in sync
+
+`src/lib/enums.ts` holds watchlist statuses, activity types, collaborator/visibility enums,
+and the **XP action point values**. These mirror the reference implementation's domain
+contract — do not change the point values, status strings, or media-type strings without an
+explicit request, since they're part of the data contract.
+
+## Frontend
+
+- UI primitives are Radix-based in `src/components/ui`; media components in
+  `src/components/media`; layout in `src/components/layout`.
+- **Hover / open state in CSS, not React state**, for popovers and overlays. An earlier bug
+  tracked hover with `onMouseEnter/onMouseLeave` and mounted controls conditionally, which
+  closed the media-card status dropdown before a status could be picked. Keep controls mounted
+  and toggle visibility with `group-hover` / `focus-within` so open menus survive pointer moves
+  and stay keyboard-accessible.
+- `typedRoutes` is enabled. A `next/link` to a route that doesn't exist fails the build —
+  routes that are built dynamically go through `internalHref()` in `src/lib/routes.ts`.
+
+## Environment & secrets
+
+- Config comes from `src/lib/env.ts` (zod-validated). Required: `AUTH_SECRET` (≥16 chars),
+  `DATABASE_URL`. Optional: `TMDB_API_TOKEN`, `GOOGLE_*`, `REDIS_URL`.
+- **Never commit `.env` or paste tokens into chat, logs, or code.** Any token shared in the
+  open is treated as compromised and must be revoked.
+- Without `TMDB_API_TOKEN`, TMDB-dependent pages show an error/degraded state; auth and
+  database-driven pages still work.
+
+## Verification — run before finalizing any change
+
+Every change must be programmatically tested and these must pass:
+
+```bash
+npm test        # vitest — integration tests run against a real MySQL database
+npm run types   # tsc --noEmit
+npm run lint    # eslint
+npm run build   # production build must succeed
+```
+
+- Integration tests live in `tests/` and truncate tables. They **must** use a database whose
+  name ends in `test`; `tests/setup.ts` refuses to run otherwise. Never point the suite at a
+  development database.
+- Mock `next/headers` with the in-memory cookie jar in `tests/helpers/cookies.ts`, and mock
+  `fetch` for the TMDB layer. Assert request shapes and cache keys, not just outcomes.
+- Component interaction tests (jsdom + Testing Library) target `tests/media-card.test.tsx`;
+  keep them passing, and write them so they would fail against the buggy behaviour, not just
+  the current markup.
+- CI (`.github/workflows/ci.yml`) loads `drizzle/0000_initial.sql` into MySQL 8, then runs
+  types, lint, tests, and build. Keep it green; MySQL 8 rejects Drizzle's
+  `--> statement-breakpoint` markers, so strip them with sed when loading SQL manually.
