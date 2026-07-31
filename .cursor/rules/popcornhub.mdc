@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Popcornhub conventions
 
-This is a **standalone** Next.js 16 (App Router) + React 19 + MySQL movie/TV tracker. It was
+This is a **standalone** Next.js 16 (App Router) + React 19 + PostgreSQL movie/TV tracker. It was
 built from an analysis of a reference project to mirror its domain and feature set, but it is
 its own codebase.
 
@@ -31,8 +31,9 @@ its own codebase.
 - `src/lib` — framework-agnostic helpers: `enums.ts` (domain enums + XP values), `cache.ts`
   (Redis with in-process fallback, `TTL` helpers), `tmdb/` (client + service layer),
   `security.ts`, `seo.ts`, `browse.ts`, `images.ts`, `utils.ts`.
-- **Drizzle ORM** (`src/db/schema/index.ts`) against MySQL. Migrations are generated with
-  `npm run db:generate` into `drizzle/` and applied manually; this app owns its schema.
+- **Drizzle ORM** (`src/db/schema/index.ts`) against PostgreSQL (Neon on Vercel, plain Postgres
+ locally/CI) via the `pg` driver. Migrations are generated with `npm run db:generate` into
+ `drizzle/` and applied manually; this app owns its schema.
 - **TMDB** is the only external data source. All calls go through `src/lib/tmdb/*`, which is
   cached to stay inside rate limits — never call `fetch` to TMDB directly from a page or
   service. TMDB failures must degrade gracefully (empty state / notice), never 500 the page.
@@ -70,7 +71,7 @@ explicit request, since they're part of the data contract.
 Every change must be programmatically tested and these must pass:
 
 ```bash
-npm test        # vitest — integration tests run against a real MySQL database
+npm test        # vitest — integration tests run against a real PostgreSQL database
 npm run types   # tsc --noEmit
 npm run lint    # eslint
 npm run build   # production build must succeed
@@ -84,6 +85,7 @@ npm run build   # production build must succeed
 - Component interaction tests (jsdom + Testing Library) target `tests/media-card.test.tsx`;
   keep them passing, and write them so they would fail against the buggy behaviour, not just
   the current markup.
-- CI (`.github/workflows/ci.yml`) loads `drizzle/0000_initial.sql` into MySQL 8, then runs
-  types, lint, tests, and build. Keep it green; MySQL 8 rejects Drizzle's
-  `--> statement-breakpoint` markers, so strip them with sed when loading SQL manually.
+- CI (`.github/workflows/ci.yml`) loads `drizzle/0000_initial.sql` into PostgreSQL 16 with
+  `psql`, then runs types, lint, tests, and build. Keep it green; Drizzle's
+  `--> statement-breakpoint` markers are SQL comments in Postgres, so `psql` loads the file
+  as-is with no preprocessing.

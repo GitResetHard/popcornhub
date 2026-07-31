@@ -1,8 +1,10 @@
 # Moviestrackr
 
 A movie and TV series tracker built with **Next.js 16** (App Router), **React 19**, and
-**MySQL**. Track a watchlist across five statuses, favorite titles, follow friends, write
+**PostgreSQL**. Track a watchlist across five statuses, favorite titles, follow friends, write
 reviews, build custom lists, and earn XP, achievements, and streaks for what you watch.
+
+Deploys on **Vercel** with a **Neon** Postgres database (any standard Postgres works locally).
 
 > This repository is a standalone application. It was built from an analysis of a reference
 > project to mirror its domain and feature set, but it is its own codebase with its own
@@ -14,7 +16,7 @@ reviews, build custom lists, and earn XP, achievements, and streaks for what you
 | --- | --- |
 | Framework | Next.js 16 (App Router, React Server Components) |
 | UI | React 19, TypeScript, Tailwind CSS 4, Radix primitives |
-| Data | MySQL 8 via Drizzle ORM |
+| Data | PostgreSQL (Neon on Vercel) via Drizzle ORM |
 | Auth | Database-backed sessions, scrypt passwords, TOTP two-factor, Google OAuth |
 | Cache | Redis with an in-process fallback |
 | Media data | TMDB API v3 |
@@ -31,7 +33,7 @@ reviews, build custom lists, and earn XP, achievements, and streaks for what you
 
 ## Getting started
 
-Requirements: Node 20+, MySQL 8 (or MariaDB 10.6+), and optionally Redis.
+Requirements: Node 20+, PostgreSQL 14+ (Neon or any Postgres), and optionally Redis.
 
 ```bash
 npm install
@@ -48,10 +50,14 @@ Fill in `.env`:
 Then create the schema and seed it:
 
 ```bash
-mysql -e "CREATE DATABASE moviestrackr_next"
+createdb moviestrackr_next
 npm run db:migrate
 npm run db:seed
 ```
+
+On Vercel, add the **Neon** integration from the Marketplace; it provisions the database and
+sets `DATABASE_URL` (use the pooled connection string). Apply the schema with `npm run db:migrate`
+against that `DATABASE_URL`.
 
 `npm run db:seed` loads the level thresholds and achievements and creates an admin account
 (`ADMIN_EMAIL` / `ADMIN_PASSWORD` environment variables override its credentials).
@@ -67,7 +73,7 @@ npm start       # serve the production build
 ## Checks
 
 ```bash
-npm test        # vitest (integration tests run against a real MySQL database)
+npm test        # vitest (integration tests run against a real PostgreSQL database)
 npm run types   # tsc --noEmit
 npm run lint    # eslint
 ```
@@ -77,8 +83,8 @@ in `test`; it refuses to run otherwise. Create and load it the same way as the d
 database:
 
 ```bash
-mysql -e "CREATE DATABASE moviestrackr_next_test"
-mysql moviestrackr_next_test < drizzle/0000_initial.sql
+createdb moviestrackr_next_test
+psql moviestrackr_next_test -f drizzle/0000_initial.sql
 ```
 
 ## Layout

@@ -26,7 +26,7 @@ import {
 } from './helpers/db';
 
 /**
- * Integration tests against a real MySQL database, since the behaviour under test is the
+ * Integration tests against a real PostgreSQL database, since the behaviour under test is the
  * interaction between queries, soft deletes, and unique keys. TMDB is stubbed so the suite
  * makes no network calls; tests/tmdb.test.ts covers the enricher and the cache keys.
  */

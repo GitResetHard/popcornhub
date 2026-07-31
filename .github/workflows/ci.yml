@@ -11,22 +11,23 @@ jobs:
     runs-on: ubuntu-latest
 
     services:
-      mysql:
-        image: mysql:8
+      postgres:
+        image: postgres:16
         env:
-          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
-          MYSQL_DATABASE: moviestrackr_next_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: moviestrackr_next_test
         ports:
-          - 3306:3306
+          - 5432:5432
         options: >-
-          --health-cmd="mysqladmin ping"
+          --health-cmd="pg_isready -U postgres"
           --health-interval=10s
           --health-timeout=5s
           --health-retries=5
 
     env:
       # The integration tests truncate tables, so they run against a dedicated database.
-      DATABASE_URL: mysql://root@127.0.0.1:3306/moviestrackr_next_test
+      DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/moviestrackr_next_test
       AUTH_SECRET: ci-secret-key-for-tests-not-real
 
     steps:
@@ -40,8 +41,9 @@ jobs:
       - run: npm ci
 
       - name: Load schema
-        # Drizzle's `--> statement-breakpoint` markers are rejected by MySQL 8, so strip them.
-        run: sed 's/--> statement-breakpoint//' drizzle/0000_initial.sql | mysql -h 127.0.0.1 -u root moviestrackr_next_test
+        # Drizzle's `--> statement-breakpoint` markers are SQL comments in Postgres, so psql
+        # ignores them and the file loads as-is.
+        run: psql "$DATABASE_URL" -f drizzle/0000_initial.sql
 
       - run: npm run types
 
