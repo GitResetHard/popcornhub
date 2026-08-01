@@ -1,11 +1,20 @@
+import { Activity, Bookmark, List, Sparkles } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import type { Route } from 'next';
 import { Suspense } from 'react';
 import { MediaGridSkeleton } from '@/components/media/media-grid';
 import { MediaRow } from '@/components/media/media-row';
 import { Button } from '@/components/ui/button';
 import { movies, tv } from '@/lib/tmdb';
 import { getCurrentUser } from '@/server/auth/current-user';
+
+const QUICK_LINKS: Array<{ href: Route; label: string; icon: typeof Activity }> = [
+    { href: '/watchlist', label: 'Watchlist', icon: Bookmark },
+    { href: '/recommendations', label: 'For You', icon: Sparkles },
+    { href: '/lists', label: 'Lists', icon: List },
+    { href: '/feed', label: 'Feed', icon: Activity },
+];
 
 export const metadata: Metadata = {
     title: 'Moviestrackr — Track movies and TV shows',
@@ -76,7 +85,25 @@ export default async function HomePage() {
                 </section>
             )}
 
-            {user && <h1 className="text-2xl font-bold tracking-tight">Welcome back, {user.name.split(' ')[0]}</h1>}
+            {user && (
+                <section className="space-y-4">
+                    <h1 className="text-2xl font-bold tracking-tight">Welcome back, {user.name.split(' ')[0]}</h1>
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                        {QUICK_LINKS.map(({ href, label, icon: Icon }) => (
+                            <Link
+                                key={href}
+                                href={href}
+                                className="bg-card hover:border-primary/50 flex items-center gap-3 rounded-xl border p-4 transition"
+                            >
+                                <span className="bg-primary/10 text-primary flex size-9 items-center justify-center rounded-lg">
+                                    <Icon className="size-5" />
+                                </span>
+                                <span className="text-sm font-medium">{label}</span>
+                            </Link>
+                        ))}
+                    </div>
+                </section>
+            )}
 
             <Suspense fallback={<MediaGridSkeleton count={12} />}>
                 <TrendingRows />

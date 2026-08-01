@@ -77,6 +77,17 @@ export function generateTotpSecret(): string {
     return new OTPAuth.Secret({ size: 20 }).base32;
 }
 
+export function totpAuthUri(secret: string, accountLabel: string): string {
+    return new OTPAuth.TOTP({
+        issuer: env.APP_NAME,
+        label: accountLabel,
+        algorithm: TOTP_CONFIG.algorithm,
+        digits: TOTP_CONFIG.digits,
+        period: TOTP_CONFIG.period,
+        secret: OTPAuth.Secret.fromBase32(secret),
+    }).toString();
+}
+
 export function verifyTotpCode(secret: string, code: string): boolean {
     const totp = new OTPAuth.TOTP({
         issuer: env.APP_NAME,

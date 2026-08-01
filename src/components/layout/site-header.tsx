@@ -1,9 +1,10 @@
-import { Clapperboard } from 'lucide-react';
+import { Activity, Clapperboard } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { getAuthState } from '@/server/auth/current-user';
 import { HeaderSearch } from './header-search';
 import { primaryNavItems } from './nav-config';
+import { NotificationBell } from './notification-bell';
 import { UserMenu } from './user-menu';
 
 export async function SiteHeader() {
@@ -31,7 +32,15 @@ export async function SiteHeader() {
 
                 <div className="flex shrink-0 items-center gap-2">
                     {user ? (
-                        <UserMenu user={user} />
+                        <>
+                            <Button asChild variant="ghost" size="icon" className="hidden sm:inline-flex" aria-label="Feed">
+                                <Link href="/feed">
+                                    <Activity className="size-5" />
+                                </Link>
+                            </Button>
+                            <NotificationBell userId={user.id} />
+                            <UserMenu user={user} />
+                        </>
                     ) : (
                         <>
                             <Button asChild variant="ghost" size="sm">

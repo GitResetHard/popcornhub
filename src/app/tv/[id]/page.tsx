@@ -1,8 +1,10 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { AddToListMenu } from '@/components/lists/add-to-list-menu';
 import { CastList } from '@/components/media/cast-list';
 import { MediaHero } from '@/components/media/media-hero';
 import { MediaRow } from '@/components/media/media-row';
+import { ReviewSection } from '@/components/reviews/review-section';
 import { JsonLd } from '@/components/seo/json-ld';
 import { Progress } from '@/components/ui/progress';
 import { metadataForTvShow, tvShowJsonLd } from '@/lib/seo';
@@ -10,6 +12,7 @@ import { TmdbError, tv } from '@/lib/tmdb';
 import { getCurrentUser } from '@/server/auth/current-user';
 import { findByUserAndTmdb as findFavorite } from '@/server/services/favorites';
 import { getWatchedEpisodeCountsBySeason } from '@/server/services/episodes';
+import { getUserLists } from '@/server/services/lists';
 import { findByUserAndTmdb as findWatchlistItem } from '@/server/services/watchlist';
 
 type PageParams = Promise<{ id: string }>;
@@ -43,13 +46,14 @@ export default async function TvDetailPage({ params }: { params: PageParams }) {
     const show = await loadShow(id);
     const user = await getCurrentUser();
 
-    const [watchlistItem, favorite, watchedBySeason] = user
+    const [watchlistItem, favorite, watchedBySeason, userLists] = user
         ? await Promise.all([
               findWatchlistItem(user.id, show.id, 'tv'),
               findFavorite(user.id, show.id, 'tv'),
               getWatchedEpisodeCountsBySeason(user.id, show.id),
+              getUserLists(user.id),
           ])
-        : [null, null, new Map<number, number>()];
+        : [null, null, new Map<number, number>(), []];
 
     // Season 0 holds specials, which the browse UI hides.
     const seasons = (show.seasons ?? []).filter((season) => season.season_number > 0);
@@ -77,6 +81,12 @@ export default async function TvDetailPage({ params }: { params: PageParams }) {
                 isFavorite={Boolean(favorite)}
                 canTrack={Boolean(user?.email_verified_at)}
             />
+
+            {user?.email_verified_at && (
+                <div className="flex justify-end">
+                    <AddToListMenu tmdbId={show.id} mediaType="tv" lists={userLists.map((list) => ({ id: list.id, name: list.name, slug: list.slug }))} />
+                </div>
+            )}
 
             {seasons.length > 0 && (
                 <section className="space-y-3">
@@ -120,6 +130,8 @@ export default async function TvDetailPage({ params }: { params: PageParams }) {
             <CastList cast={show.credits?.cast ?? []} viewAllHref={`/tv/${show.id}/credits`} />
 
             <MediaRow title="Recommended" items={recommendations} mediaType="tv" />
+
+            <ReviewSection tmdbId={show.id} mediaType="tv" />
         </div>
     );
 }
